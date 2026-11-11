@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: flagstream
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ADMIN_KEY
+        generateValue: true
+      - key: NODE_VERSION
+        value: 20

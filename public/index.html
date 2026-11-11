@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>FlagStream Dashboard</title>
+<style>
+  :root {
+    --bg: #f4f6fb; --card: #ffffff; --text: #1c2333; --muted: #6b7489;
+    --line: #e3e7f0; --brand: #4f46e5; --brand-dark: #4338ca;
+    --on: #16a34a; --off: #cbd2e0; --danger: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1420; --card: #181f2e; --text: #e8ecf5; --muted: #8d97ad;
+      --line: #28324a; --brand: #818cf8; --brand-dark: #a5b4fc;
+      --off: #3a4560;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; }
+  header { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; padding: 1.5rem 1rem; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 1rem; }
+  header .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
+  h1 { margin: 0; font-size: 1.5rem; letter-spacing: -.01em; }
+  header p { margin: 0; opacity: .85; font-size: .9rem; }
+  .status { display: inline-flex; align-items: center; gap: .4rem; background: rgba(255,255,255,.18);
+            padding: .3rem .75rem; border-radius: 999px; font-size: .85rem; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #fbbf24; }
+  .status.live .dot { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.3); }
+  .status.down .dot { background: #f87171; }
+  main.wrap { padding: 1.25rem 1rem 3rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .card h2 { margin: 0 0 .75rem; font-size: 1rem; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+  label { font-size: .85rem; color: var(--muted); }
+  input[type=text], input[type=password] {
+    padding: .5rem .7rem; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text); font: inherit; min-width: 0; }
+  input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  button { padding: .5rem .9rem; border: 0; border-radius: 8px; background: var(--brand); color: #fff;
+           font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover { background: var(--brand-dark); }
+  button.ghost { background: transparent; color: var(--danger); border: 1px solid var(--line); padding: .35rem .6rem; }
+  button.ghost:hover { background: rgba(220,38,38,.08); }
+  .flag { display: grid; grid-template-columns: 1.2fr auto 1.4fr; gap: 1rem; align-items: center;
+          padding: .9rem 0; border-top: 1px solid var(--line); }
+  .flag:first-child { border-top: 0; }
+  .flag .name { font-weight: 650; word-break: break-all; }
+  .flag .sub { font-size: .78rem; color: var(--muted); }
+  .rollout { display: flex; align-items: center; gap: .6rem; }
+  .rollout input[type=range] { flex: 1; accent-color: var(--brand); }
+  .pct { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .test { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+  .result { font-size: .85rem; padding: .2rem .6rem; border-radius: 999px; background: var(--bg); color: var(--muted); }
+  .result.true { background: rgba(22,163,74,.15); color: var(--on); font-weight: 600; }
+  .result.false { background: rgba(220,38,38,.12); color: var(--danger); font-weight: 600; }
+  /* toggle switch */
+  .switch { position: relative; width: 46px; height: 26px; display: inline-block; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--off); border-radius: 999px; cursor: pointer; transition: .2s; }
+  .slider::before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px;
+                    background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider { background: var(--on); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+  .switch input:focus-visible + .slider { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .empty { color: var(--muted); text-align: center; padding: 1.5rem 0; }
+  #toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); background: #1c2333; color: #fff;
+           padding: .6rem 1rem; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  #toast.show { opacity: 1; }
+  @media (max-width: 600px) { .flag { grid-template-columns: 1fr auto; } .rollout { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<header>
+  <div class='wrap'>
+    <div>
+      <h1>FlagStream</h1>
+      <p>Feature flags, pushed live to every node</p>
+    </div>
+    <span id='status' class='status'><span class='dot'></span><span id='statusText'>Connecting…</span></span>
+  </div>
+</header>
+
+<main class='wrap'>
+  <section class='card'>
+    <div class='row'>
+      <label for='key'>Admin key</label>
+      <input id='key' type='password' value='demo-admin-key' autocomplete='off'>
+      <span id='ver' class='sub' style='color:var(--muted);font-size:.85rem'></span>
+    </div>
+  </section>
+
+  <section class='card'>
+    <h2>Flags</h2>
+    <div id='rows'><div class='empty'>Loading…</div></div>
+  </section>
+
+  <section class='card'>
+    <h2>Create flag</h2>
+    <form id='createForm' class='row'>
+      <input id='newKey' type='text' placeholder='e.g. new-checkout' aria-label='Flag key'>
+      <button type='submit'>Add flag</button>
+    </form>
+  </section>
+</main>
+<div id='toast'></div>
+
+<script>
+// Leave empty when the same server serves this page (Render).
+// If you host this page on Netlify, set it to your Render URL, e.g. 'https://flagstream.onrender.com'
+window.API_BASE = '';
+const API = window.API_BASE;
+const $ = (id) => document.getElementById(id);
+const H = () => ({ 'Content-Type': 'application/json', 'x-admin-key': $('key').value });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Remember what was typed / shown in each row, because the table redraws on every push
+const memory = {};  // flagKey -> { userId, result, reason }
+
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+async function call(method, k, body) {
+  const r = await fetch(API + '/flags/' + encodeURIComponent(k), { method, headers: H(), body: body && JSON.stringify(body) });
+  if (r.status === 401) { toast('Wrong admin key'); return false; }
+  if (!r.ok) { toast('Request failed (' + r.status + ')'); return false; }
+  return true;
+}
+
+async function test(k) {
+  const userId = memory[k]?.userId || '';
+  const r = await fetch(API + '/evaluate/' + encodeURIComponent(k), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId })
+  });
+  const j = await r.json();
+  memory[k] = { userId, value: j.value, reason: j.reason };
+  const el = document.querySelector(`[data-result="${CSS.escape(k)}"]`);
+  if (el) { el.textContent = (j.value ? 'ON' : 'OFF') + ' · ' + j.reason; el.className = 'result ' + j.value; }
+}
+
+function render(s) {
+  $('ver').textContent = 'Version ' + s.version;
+  const flags = Object.values(s.flags);
+  if (!flags.length) { $('rows').innerHTML = "<div class='empty'>No flags yet. Create one below.</div>"; return; }
+  $('rows').innerHTML = flags.map((f) => {
+    const k = esc(f.key), m = memory[f.key] || {}, pct = f.rollout ?? 100;
+    return `
+    <div class='flag'>
+      <div><div class='name'>${k}</div><div class='sub'>${f.enabled ? 'Enabled' : 'Kill switch off'}</div></div>
+      <label class='switch' title='Enable / disable'>
+        <input type='checkbox' data-act='toggle' data-key='${k}' ${f.enabled ? 'checked' : ''}>
+        <span class='slider'></span>
+      </label>
+      <div class='rollout'>
+        <input type='range' min='0' max='100' value='${pct}' data-act='rollout' data-key='${k}' aria-label='Rollout percent'>
+        <span class='pct'>${pct}%</span>
+      </div>
+      <div class='test'>
+        <input type='text' size='10' placeholder='userId' data-act='user' data-key='${k}' value='${esc(m.userId || '')}'>
+        <button data-act='test' data-key='${k}'>Test</button>
+        <span class='result ${m.value ?? ''}' data-result='${k}'>${m.reason ? (m.value ? 'ON' : 'OFF') + ' · ' + esc(m.reason) : 'not tested'}</span>
+        <span style='flex:1'></span>
+        <button class='ghost' data-act='delete' data-key='${k}'>Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// One set of listeners for the whole list (no inline handlers)
+$('rows').addEventListener('change', (e) => {
+  const { act, key } = e.target.dataset;
+  if (act === 'toggle') call('PUT', key, { enabled: e.target.checked });
+  if (act === 'rollout') call('PUT', key, { rollout: +e.target.value });
+});
+$('rows').addEventListener('input', (e) => {
+  const { act, key } = e.target.dataset;
+  if (act === 'user') memory[key] = { userId: e.target.value };
+  if (act === 'rollout') e.target.nextElementSibling.textContent = e.target.value + '%';
+});
+$('rows').addEventListener('click', async (e) => {
+  const { act, key } = e.target.dataset;
+  if (act === 'test') test(key);
+  if (act === 'delete' && confirm('Delete flag "' + key + '"?')) {
+    if (await call('DELETE', key)) toast('Deleted ' + key);
+  }
+});
+$('createForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const k = $('newKey').value.trim();
+  if (k && await call('PUT', k, { enabled: false, rollout: 100 })) { $('newKey').value = ''; toast('Created ' + k); }
+});
+
+const es = new EventSource(API + '/stream');
+const setStatus = (cls, text) => { $('status').className = 'status ' + cls; $('statusText').textContent = text; };
+es.onopen = () => setStatus('live', 'Live');
+es.onerror = () => setStatus('down', 'Reconnecting…');
+es.onmessage = (e) => render(JSON.parse(e.data));
+</script>
+</body>
+</html>

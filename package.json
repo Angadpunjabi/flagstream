@@ -1,0 +1,17 @@
+{
+  "name": "flagstream",
+  "version": "1.0.0",
+  "description": "Low-latency distributed feature flag service",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node demo/nodes.js",
+    "bench": "node bench/bench.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
