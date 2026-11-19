@@ -6,11 +6,16 @@ let state = { version: 1, flags: {} };
 const listeners = new Set();
 
 function load() {
-  try { state = JSON.parse(fs.readFileSync(FILE, 'utf8')); }
-  catch (e) { state = { version: 1, flags: {} }; }
+  for (const f of [FILE, FILE + '.bak']) {          // main file first, then the backup
+    try { state = JSON.parse(fs.readFileSync(f, 'utf8')); return; } catch (e) { /* try next */ }
+  }
+  state = { version: 1, flags: {} };
 }
 function save() {
-  try { fs.writeFileSync(FILE, JSON.stringify(state, null, 2)); }
+  try {
+    if (fs.existsSync(FILE)) fs.copyFileSync(FILE, FILE + '.bak');   // keep last good copy
+    fs.writeFileSync(FILE, JSON.stringify(state, null, 2));
+  }
   catch (e) { console.error('persist failed:', e.message); }
 }
 function notify() { for (const fn of listeners) fn(state); }

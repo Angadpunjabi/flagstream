@@ -8,10 +8,16 @@ Flags are evaluated from an in-memory cache inside each node (no network call), 
 npm install
 npm start                 # Terminal 1 -> http://localhost:3000 (dashboard)
 npm run demo              # Terminal 2 -> 3 nodes, shows propagation + consistent rollout
+npm run demo:tx           # Terminal 2 -> flag switched off mid-transaction + backup demo
 npm run bench             # Terminal 2 -> local vs remote latency
 ```
 
 Default admin key (local only): `demo-admin-key`
+
+## Switching a flag off during a transaction
+
+- **Transaction pinning:** `const tx = client.startTransaction()` freezes the flags when the transaction starts. `tx.isEnabled(...)` always uses that frozen copy, so a flag switched off mid-transaction cannot change the flow halfway. New transactions started afterwards see the new value. Call `tx.end()` when finished.
+- **Last-known-good backup:** pass `backupFile: 'flags.backup.json'` to `FlagClient`. Every valid update is saved to that file. If the server is unreachable at startup, the node loads the backup. Invalid data from the server is ignored. The server also keeps `flags.json.bak` and falls back to it if `flags.json` is corrupted.
 
 ## API
 
